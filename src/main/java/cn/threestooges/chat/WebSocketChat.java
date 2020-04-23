@@ -12,6 +12,7 @@ import javax.websocket.server.ServerEndpoint;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
  * 聊天服务器
@@ -19,16 +20,21 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 @ServerEndpoint("/chat")
 public class WebSocketChat {
-    //存储在线会话
-    private static Map<String, Session> onlineSessions = new ConcurrentHashMap<>();
+    //用来存放每个客户端对应的MyWebSocket对象。
+    private static CopyOnWriteArraySet<WebSocketChat> webSocketSet = new CopyOnWriteArraySet<>();
+
+    //与某个客户端的连接会话，需要通过它来给客户端发送数据
+    private Session session;
+
 
     /**
      * 当客户端打开连接：1.添加会话对象 2.更新在线人数
      */
     @OnOpen
     public void onOpen(Session session) {
-        onlineSessions.put(session.getId(), session);
-        session.getAsyncRemote().sendText("当前在线人数："+onlineSessions.size());
+        this.session = session;
+        webSocketSet.add(this);
+        this.session.getAsyncRemote().sendText("连接成功，当前在线人数："+webSocketSet.size());
     }
 
     /**
@@ -36,8 +42,7 @@ public class WebSocketChat {
      */
     @OnClose
     public void onClose(Session session){
-        onlineSessions.remove(session.getId());
-        session.getAsyncRemote().sendText("有用户退出聊天，当前在线人数："+onlineSessions.size());
+        webSocketSet.remove(this);
     }
 
     /**
@@ -46,18 +51,17 @@ public class WebSocketChat {
      * PS: 这里约定传递的消息为JSON字符串 方便传递更多参数！
      */
     @OnMessage
-    public void onMessage(Session session, String jsonStr) {
-        Message message = JSON.parseObject(jsonStr, Message.class);
-        sendMessageToAll(message.getMsg());
+    public void onMessage(String message, Session session) {
+        sendMessageToAll(message);
     }
 
     /**
      * 公共方法：发送信息给所有人
      */
     private static void sendMessageToAll(String msg) {
-        onlineSessions.forEach((id, session) -> {
+        webSocketSet.forEach((webSocketChat) -> {
             try {
-                session.getBasicRemote().sendText(msg);
+                webSocketChat.session.getBasicRemote().sendText(msg);
             } catch (IOException e) {
                 e.printStackTrace();
             }

@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 public class Message {
-    private String msg;
+    private String message;
     private int type;
     private Long fromUserId;
     private Long toUserId;
