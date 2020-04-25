@@ -46,9 +46,7 @@ public class WebSocketChat {
     }
 
     /**
-     * 当客户端发送消息：1.获取它的用户名和消息 2.发送消息给所有人
-     * <p>
-     * PS: 这里约定传递的消息为JSON字符串 方便传递更多参数！
+     * 当客户端发送消息
      */
     @OnMessage
     public void onMessage(String message, Session session) {
